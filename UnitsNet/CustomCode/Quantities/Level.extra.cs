@@ -49,7 +49,7 @@ namespace UnitsNet
                 throw new ArgumentOutOfRangeException(nameof(reference), errorMessage);
 
             _value = 10*Math.Log10(quantity/reference);
-            Unit = LevelUnit.Decibel;
+            _unit = LevelUnit.Decibel;
         }
     }
 #endif

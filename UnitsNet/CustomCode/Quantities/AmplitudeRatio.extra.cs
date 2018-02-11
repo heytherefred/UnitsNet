@@ -57,7 +57,7 @@ namespace UnitsNet
 
             // E(dBV) = 20*log10(value(V)/reference(V))
             _value = 20 * Math.Log10(voltage.Volts / 1);
-            Unit = AmplitudeRatioUnit.DecibelVolt;
+            _unit = AmplitudeRatioUnit.DecibelVolt;
         }
 
         /// <summary>

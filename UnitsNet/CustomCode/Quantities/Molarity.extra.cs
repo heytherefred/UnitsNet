@@ -22,7 +22,7 @@ namespace UnitsNet
             : this()
         {
             _value = density.KilogramsPerCubicMeter / molecularWeight.Kilograms;
-            Unit = MolarityUnit.MolesPerCubicMeter;
+            _unit = MolarityUnit.MolesPerCubicMeter;
         }
 
         /// <summary>
