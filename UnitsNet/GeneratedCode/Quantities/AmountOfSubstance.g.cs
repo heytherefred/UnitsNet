@@ -62,7 +62,15 @@ namespace UnitsNet
     public partial struct AmountOfSubstance : IComparable, IComparable<AmountOfSubstance>
 #endif
     {
+        /// <summary>
+        ///     The numeric value this quantity was constructed with.
+        /// </summary>
         private readonly double _value;
+
+        /// <summary>
+        ///     The unit this quantity was constructed with.
+        /// </summary>
+        private readonly AmountOfSubstanceUnit? _unit;
 
         /// <summary>
         ///     The numeric value this quantity was constructed with.
@@ -74,14 +82,16 @@ namespace UnitsNet
 #endif
 
         /// <summary>
-        ///     The unit this quantity was constructed with.
+        ///     The unit this quantity was constructed with -or- <see cref="BaseUnit" /> if default ctor was used.
         /// </summary>
-        public AmountOfSubstanceUnit Unit { get; }
+        public AmountOfSubstanceUnit Unit => _unit.GetValueOrDefault(BaseUnit);
 
         // Windows Runtime Component requires a default constructor
 #if WINDOWS_UWP
-        public AmountOfSubstance() : this(0, BaseUnit)
+        public AmountOfSubstance()
         {
+            _value = 0;
+            _unit = BaseUnit;
         }
 #endif
 
@@ -89,7 +99,7 @@ namespace UnitsNet
         public AmountOfSubstance(double moles)
         {
             _value = Convert.ToDouble(moles);
-            Unit = BaseUnit;
+            _unit = BaseUnit;
         }
 
         /// <summary>
@@ -106,10 +116,14 @@ namespace UnitsNet
           AmountOfSubstance(double numericValue, AmountOfSubstanceUnit unit)
         {
             _value = numericValue;
-            Unit = unit;
+            _unit = unit;
          }
 
         // Windows Runtime Component does not allow public methods/ctors with same number of parameters: https://msdn.microsoft.com/en-us/library/br230301.aspx#Overloaded methods
+        /// <summary>
+        ///     Creates the quantity with the given value assuming the base unit Mole.
+        /// </summary>
+        /// <param name="moles">Value assuming base unit Mole.</param>
 #if WINDOWS_UWP
         private
 #else
@@ -120,6 +134,10 @@ namespace UnitsNet
 
         // Windows Runtime Component does not allow public methods/ctors with same number of parameters: https://msdn.microsoft.com/en-us/library/br230301.aspx#Overloaded methods
         // Windows Runtime Component does not support decimal type
+        /// <summary>
+        ///     Creates the quantity with the given value assuming the base unit Mole.
+        /// </summary>
+        /// <param name="moles">Value assuming base unit Mole.</param>
 #if WINDOWS_UWP
         private
 #else
