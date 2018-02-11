@@ -44,13 +44,6 @@ using System.Linq;
 using JetBrains.Annotations;
 using UnitsNet.Units;
 
-// Windows Runtime Component does not support CultureInfo type, so use culture name string instead for public methods: https://msdn.microsoft.com/en-us/library/br230301.aspx
-#if WINDOWS_UWP
-using Culture = System.String;
-#else
-using Culture = System.IFormatProvider;
-#endif
-
 // ReSharper disable once CheckNamespace
 
 namespace UnitsNet
@@ -69,45 +62,71 @@ namespace UnitsNet
     public partial struct BitRate : IComparable, IComparable<BitRate>
 #endif
     {
+        private readonly decimal _value;
+
         /// <summary>
-        ///     Base unit of BitRate.
+        ///     The numeric value this quantity was constructed with.
         /// </summary>
-        private readonly decimal _bitsPerSecond;
+#if WINDOWS_UWP
+        public double Value => Convert.ToDouble(_value);
+#else
+        public decimal Value => _value;
+#endif
+
+        /// <summary>
+        ///     The unit this quantity was constructed with.
+        /// </summary>
+        public BitRateUnit Unit { get; }
 
         // Windows Runtime Component requires a default constructor
 #if WINDOWS_UWP
-        public BitRate() : this(0)
+        public BitRate() : this(0, BaseUnit)
         {
         }
 #endif
 
+        [Obsolete("Use the constructor that takes a unit parameter. This constructor will be removed in a future version.")]
         public BitRate(double bitspersecond)
         {
-            _bitsPerSecond = Convert.ToDecimal(bitspersecond);
+            _value = Convert.ToDecimal(bitspersecond);
+            Unit = BaseUnit;
         }
+
+        /// <summary>
+        ///     Creates the quantity with the given numeric value and unit.
+        /// </summary>
+        /// <param name="numericValue">Numeric value.</param>
+        /// <param name="unit">Unit representation.</param>
+        /// <remarks>Value parameter cannot be named 'value' due to constraint when targeting Windows Runtime Component.</remarks>
+#if WINDOWS_UWP
+        private
+#else
+        public 
+#endif
+          BitRate(decimal numericValue, BitRateUnit unit)
+        {
+            _value = numericValue;
+            Unit = unit;
+         }
 
         // Windows Runtime Component does not allow public methods/ctors with same number of parameters: https://msdn.microsoft.com/en-us/library/br230301.aspx#Overloaded methods
 #if WINDOWS_UWP
         private
 #else
+        [Obsolete("Use the constructor that takes a unit parameter. This constructor will be removed in a future version.")]
         public
 #endif
-        BitRate(long bitspersecond)
-        {
-            _bitsPerSecond = Convert.ToDecimal(bitspersecond);
-        }
+        BitRate(long bitspersecond) : this(Convert.ToDecimal(bitspersecond), BaseUnit) { }
 
         // Windows Runtime Component does not allow public methods/ctors with same number of parameters: https://msdn.microsoft.com/en-us/library/br230301.aspx#Overloaded methods
         // Windows Runtime Component does not support decimal type
 #if WINDOWS_UWP
         private
 #else
+        [Obsolete("Use the constructor that takes a unit parameter. This constructor will be removed in a future version.")]
         public
 #endif
-        BitRate(decimal bitspersecond)
-        {
-            _bitsPerSecond = Convert.ToDecimal(bitspersecond);
-        }
+        BitRate(decimal bitspersecond) : this(Convert.ToDecimal(bitspersecond), BaseUnit) { }
 
         #region Properties
 
@@ -119,232 +138,122 @@ namespace UnitsNet
         /// <summary>
         ///     The base unit representation of this quantity for the numeric value stored internally. All conversions go via this value.
         /// </summary>
-        public static BitRateUnit BaseUnit
-        {
-            get { return BitRateUnit.BitPerSecond; }
-        }
+        public static BitRateUnit BaseUnit => BitRateUnit.BitPerSecond;
 
         /// <summary>
         ///     All units of measurement for the BitRate quantity.
         /// </summary>
         public static BitRateUnit[] Units { get; } = Enum.GetValues(typeof(BitRateUnit)).Cast<BitRateUnit>().ToArray();
-
         /// <summary>
         ///     Get BitRate in BitsPerSecond.
         /// </summary>
-        public double BitsPerSecond
-        {
-            get { return Convert.ToDouble(_bitsPerSecond); }
-        }
-
+        public double BitsPerSecond => As(BitRateUnit.BitPerSecond);
         /// <summary>
         ///     Get BitRate in BytesPerSecond.
         /// </summary>
-        public double BytesPerSecond
-        {
-            get { return Convert.ToDouble(_bitsPerSecond/8m); }
-        }
-
+        public double BytesPerSecond => As(BitRateUnit.BytePerSecond);
         /// <summary>
         ///     Get BitRate in ExabitsPerSecond.
         /// </summary>
-        public double ExabitsPerSecond
-        {
-            get { return Convert.ToDouble((_bitsPerSecond) / 1e18m); }
-        }
-
+        public double ExabitsPerSecond => As(BitRateUnit.ExabitPerSecond);
         /// <summary>
         ///     Get BitRate in ExabytesPerSecond.
         /// </summary>
-        public double ExabytesPerSecond
-        {
-            get { return Convert.ToDouble((_bitsPerSecond/8m) / 1e18m); }
-        }
-
+        public double ExabytesPerSecond => As(BitRateUnit.ExabytePerSecond);
         /// <summary>
         ///     Get BitRate in ExbibitsPerSecond.
         /// </summary>
-        public double ExbibitsPerSecond
-        {
-            get { return Convert.ToDouble((_bitsPerSecond) / (1024m * 1024 * 1024 * 1024 * 1024 * 1024)); }
-        }
-
+        public double ExbibitsPerSecond => As(BitRateUnit.ExbibitPerSecond);
         /// <summary>
         ///     Get BitRate in ExbibytesPerSecond.
         /// </summary>
-        public double ExbibytesPerSecond
-        {
-            get { return Convert.ToDouble((_bitsPerSecond/8m) / (1024m * 1024 * 1024 * 1024 * 1024 * 1024)); }
-        }
-
+        public double ExbibytesPerSecond => As(BitRateUnit.ExbibytePerSecond);
         /// <summary>
         ///     Get BitRate in GibibitsPerSecond.
         /// </summary>
-        public double GibibitsPerSecond
-        {
-            get { return Convert.ToDouble((_bitsPerSecond) / (1024m * 1024 * 1024)); }
-        }
-
+        public double GibibitsPerSecond => As(BitRateUnit.GibibitPerSecond);
         /// <summary>
         ///     Get BitRate in GibibytesPerSecond.
         /// </summary>
-        public double GibibytesPerSecond
-        {
-            get { return Convert.ToDouble((_bitsPerSecond/8m) / (1024m * 1024 * 1024)); }
-        }
-
+        public double GibibytesPerSecond => As(BitRateUnit.GibibytePerSecond);
         /// <summary>
         ///     Get BitRate in GigabitsPerSecond.
         /// </summary>
-        public double GigabitsPerSecond
-        {
-            get { return Convert.ToDouble((_bitsPerSecond) / 1e9m); }
-        }
-
+        public double GigabitsPerSecond => As(BitRateUnit.GigabitPerSecond);
         /// <summary>
         ///     Get BitRate in GigabytesPerSecond.
         /// </summary>
-        public double GigabytesPerSecond
-        {
-            get { return Convert.ToDouble((_bitsPerSecond/8m) / 1e9m); }
-        }
-
+        public double GigabytesPerSecond => As(BitRateUnit.GigabytePerSecond);
         /// <summary>
         ///     Get BitRate in KibibitsPerSecond.
         /// </summary>
-        public double KibibitsPerSecond
-        {
-            get { return Convert.ToDouble((_bitsPerSecond) / 1024m); }
-        }
-
+        public double KibibitsPerSecond => As(BitRateUnit.KibibitPerSecond);
         /// <summary>
         ///     Get BitRate in KibibytesPerSecond.
         /// </summary>
-        public double KibibytesPerSecond
-        {
-            get { return Convert.ToDouble((_bitsPerSecond/8m) / 1024m); }
-        }
-
+        public double KibibytesPerSecond => As(BitRateUnit.KibibytePerSecond);
         /// <summary>
         ///     Get BitRate in KilobitsPerSecond.
         /// </summary>
-        public double KilobitsPerSecond
-        {
-            get { return Convert.ToDouble((_bitsPerSecond) / 1e3m); }
-        }
-
+        public double KilobitsPerSecond => As(BitRateUnit.KilobitPerSecond);
         /// <summary>
         ///     Get BitRate in KilobytesPerSecond.
         /// </summary>
-        public double KilobytesPerSecond
-        {
-            get { return Convert.ToDouble((_bitsPerSecond/8m) / 1e3m); }
-        }
-
+        public double KilobytesPerSecond => As(BitRateUnit.KilobytePerSecond);
         /// <summary>
         ///     Get BitRate in MebibitsPerSecond.
         /// </summary>
-        public double MebibitsPerSecond
-        {
-            get { return Convert.ToDouble((_bitsPerSecond) / (1024m * 1024)); }
-        }
-
+        public double MebibitsPerSecond => As(BitRateUnit.MebibitPerSecond);
         /// <summary>
         ///     Get BitRate in MebibytesPerSecond.
         /// </summary>
-        public double MebibytesPerSecond
-        {
-            get { return Convert.ToDouble((_bitsPerSecond/8m) / (1024m * 1024)); }
-        }
-
+        public double MebibytesPerSecond => As(BitRateUnit.MebibytePerSecond);
         /// <summary>
         ///     Get BitRate in MegabitsPerSecond.
         /// </summary>
-        public double MegabitsPerSecond
-        {
-            get { return Convert.ToDouble((_bitsPerSecond) / 1e6m); }
-        }
-
+        public double MegabitsPerSecond => As(BitRateUnit.MegabitPerSecond);
         /// <summary>
         ///     Get BitRate in MegabytesPerSecond.
         /// </summary>
-        public double MegabytesPerSecond
-        {
-            get { return Convert.ToDouble((_bitsPerSecond/8m) / 1e6m); }
-        }
-
+        public double MegabytesPerSecond => As(BitRateUnit.MegabytePerSecond);
         /// <summary>
         ///     Get BitRate in PebibitsPerSecond.
         /// </summary>
-        public double PebibitsPerSecond
-        {
-            get { return Convert.ToDouble((_bitsPerSecond) / (1024m * 1024 * 1024 * 1024 * 1024)); }
-        }
-
+        public double PebibitsPerSecond => As(BitRateUnit.PebibitPerSecond);
         /// <summary>
         ///     Get BitRate in PebibytesPerSecond.
         /// </summary>
-        public double PebibytesPerSecond
-        {
-            get { return Convert.ToDouble((_bitsPerSecond/8m) / (1024m * 1024 * 1024 * 1024 * 1024)); }
-        }
-
+        public double PebibytesPerSecond => As(BitRateUnit.PebibytePerSecond);
         /// <summary>
         ///     Get BitRate in PetabitsPerSecond.
         /// </summary>
-        public double PetabitsPerSecond
-        {
-            get { return Convert.ToDouble((_bitsPerSecond) / 1e15m); }
-        }
-
+        public double PetabitsPerSecond => As(BitRateUnit.PetabitPerSecond);
         /// <summary>
         ///     Get BitRate in PetabytesPerSecond.
         /// </summary>
-        public double PetabytesPerSecond
-        {
-            get { return Convert.ToDouble((_bitsPerSecond/8m) / 1e15m); }
-        }
-
+        public double PetabytesPerSecond => As(BitRateUnit.PetabytePerSecond);
         /// <summary>
         ///     Get BitRate in TebibitsPerSecond.
         /// </summary>
-        public double TebibitsPerSecond
-        {
-            get { return Convert.ToDouble((_bitsPerSecond) / (1024m * 1024 * 1024 * 1024)); }
-        }
-
+        public double TebibitsPerSecond => As(BitRateUnit.TebibitPerSecond);
         /// <summary>
         ///     Get BitRate in TebibytesPerSecond.
         /// </summary>
-        public double TebibytesPerSecond
-        {
-            get { return Convert.ToDouble((_bitsPerSecond/8m) / (1024m * 1024 * 1024 * 1024)); }
-        }
-
+        public double TebibytesPerSecond => As(BitRateUnit.TebibytePerSecond);
         /// <summary>
         ///     Get BitRate in TerabitsPerSecond.
         /// </summary>
-        public double TerabitsPerSecond
-        {
-            get { return Convert.ToDouble((_bitsPerSecond) / 1e12m); }
-        }
-
+        public double TerabitsPerSecond => As(BitRateUnit.TerabitPerSecond);
         /// <summary>
         ///     Get BitRate in TerabytesPerSecond.
         /// </summary>
-        public double TerabytesPerSecond
-        {
-            get { return Convert.ToDouble((_bitsPerSecond/8m) / 1e12m); }
-        }
+        public double TerabytesPerSecond => As(BitRateUnit.TerabytePerSecond);
 
         #endregion
 
         #region Static
 
-        public static BitRate Zero
-        {
-            get { return new BitRate(); }
-        }
+        public static BitRate Zero => new BitRate(0, BaseUnit);
 
         /// <summary>
         ///     Get BitRate from BitsPerSecond.
@@ -352,17 +261,13 @@ namespace UnitsNet
 #if WINDOWS_UWP
         [Windows.Foundation.Metadata.DefaultOverload]
         public static BitRate FromBitsPerSecond(double bitspersecond)
-        {
-            double value = (double) bitspersecond;
-            return new BitRate(Convert.ToDecimal(value));
-        }
 #else
-        public static BitRate FromBitsPerSecond(QuantityValue bitspersecond)
-        {
-            double value = (double) bitspersecond;
-            return new BitRate((Convert.ToDecimal(value)));
-        }
+        public static BitRate FromBitsPerSecond(QuantityValueDecimal bitspersecond)
 #endif
+        {
+            decimal value = (decimal) bitspersecond;
+            return new BitRate(value, BitRateUnit.BitPerSecond);
+        }
 
         /// <summary>
         ///     Get BitRate from BytesPerSecond.
@@ -370,17 +275,13 @@ namespace UnitsNet
 #if WINDOWS_UWP
         [Windows.Foundation.Metadata.DefaultOverload]
         public static BitRate FromBytesPerSecond(double bytespersecond)
-        {
-            double value = (double) bytespersecond;
-            return new BitRate(Convert.ToDecimal(value*8d));
-        }
 #else
-        public static BitRate FromBytesPerSecond(QuantityValue bytespersecond)
-        {
-            double value = (double) bytespersecond;
-            return new BitRate((Convert.ToDecimal(value*8d)));
-        }
+        public static BitRate FromBytesPerSecond(QuantityValueDecimal bytespersecond)
 #endif
+        {
+            decimal value = (decimal) bytespersecond;
+            return new BitRate(value, BitRateUnit.BytePerSecond);
+        }
 
         /// <summary>
         ///     Get BitRate from ExabitsPerSecond.
@@ -388,17 +289,13 @@ namespace UnitsNet
 #if WINDOWS_UWP
         [Windows.Foundation.Metadata.DefaultOverload]
         public static BitRate FromExabitsPerSecond(double exabitspersecond)
-        {
-            double value = (double) exabitspersecond;
-            return new BitRate(Convert.ToDecimal((value) * 1e18d));
-        }
 #else
-        public static BitRate FromExabitsPerSecond(QuantityValue exabitspersecond)
-        {
-            double value = (double) exabitspersecond;
-            return new BitRate((Convert.ToDecimal((value) * 1e18d)));
-        }
+        public static BitRate FromExabitsPerSecond(QuantityValueDecimal exabitspersecond)
 #endif
+        {
+            decimal value = (decimal) exabitspersecond;
+            return new BitRate(value, BitRateUnit.ExabitPerSecond);
+        }
 
         /// <summary>
         ///     Get BitRate from ExabytesPerSecond.
@@ -406,17 +303,13 @@ namespace UnitsNet
 #if WINDOWS_UWP
         [Windows.Foundation.Metadata.DefaultOverload]
         public static BitRate FromExabytesPerSecond(double exabytespersecond)
-        {
-            double value = (double) exabytespersecond;
-            return new BitRate(Convert.ToDecimal((value*8d) * 1e18d));
-        }
 #else
-        public static BitRate FromExabytesPerSecond(QuantityValue exabytespersecond)
-        {
-            double value = (double) exabytespersecond;
-            return new BitRate((Convert.ToDecimal((value*8d) * 1e18d)));
-        }
+        public static BitRate FromExabytesPerSecond(QuantityValueDecimal exabytespersecond)
 #endif
+        {
+            decimal value = (decimal) exabytespersecond;
+            return new BitRate(value, BitRateUnit.ExabytePerSecond);
+        }
 
         /// <summary>
         ///     Get BitRate from ExbibitsPerSecond.
@@ -424,17 +317,13 @@ namespace UnitsNet
 #if WINDOWS_UWP
         [Windows.Foundation.Metadata.DefaultOverload]
         public static BitRate FromExbibitsPerSecond(double exbibitspersecond)
-        {
-            double value = (double) exbibitspersecond;
-            return new BitRate(Convert.ToDecimal((value) * (1024d * 1024 * 1024 * 1024 * 1024 * 1024)));
-        }
 #else
-        public static BitRate FromExbibitsPerSecond(QuantityValue exbibitspersecond)
-        {
-            double value = (double) exbibitspersecond;
-            return new BitRate((Convert.ToDecimal((value) * (1024d * 1024 * 1024 * 1024 * 1024 * 1024))));
-        }
+        public static BitRate FromExbibitsPerSecond(QuantityValueDecimal exbibitspersecond)
 #endif
+        {
+            decimal value = (decimal) exbibitspersecond;
+            return new BitRate(value, BitRateUnit.ExbibitPerSecond);
+        }
 
         /// <summary>
         ///     Get BitRate from ExbibytesPerSecond.
@@ -442,17 +331,13 @@ namespace UnitsNet
 #if WINDOWS_UWP
         [Windows.Foundation.Metadata.DefaultOverload]
         public static BitRate FromExbibytesPerSecond(double exbibytespersecond)
-        {
-            double value = (double) exbibytespersecond;
-            return new BitRate(Convert.ToDecimal((value*8d) * (1024d * 1024 * 1024 * 1024 * 1024 * 1024)));
-        }
 #else
-        public static BitRate FromExbibytesPerSecond(QuantityValue exbibytespersecond)
-        {
-            double value = (double) exbibytespersecond;
-            return new BitRate((Convert.ToDecimal((value*8d) * (1024d * 1024 * 1024 * 1024 * 1024 * 1024))));
-        }
+        public static BitRate FromExbibytesPerSecond(QuantityValueDecimal exbibytespersecond)
 #endif
+        {
+            decimal value = (decimal) exbibytespersecond;
+            return new BitRate(value, BitRateUnit.ExbibytePerSecond);
+        }
 
         /// <summary>
         ///     Get BitRate from GibibitsPerSecond.
@@ -460,17 +345,13 @@ namespace UnitsNet
 #if WINDOWS_UWP
         [Windows.Foundation.Metadata.DefaultOverload]
         public static BitRate FromGibibitsPerSecond(double gibibitspersecond)
-        {
-            double value = (double) gibibitspersecond;
-            return new BitRate(Convert.ToDecimal((value) * (1024d * 1024 * 1024)));
-        }
 #else
-        public static BitRate FromGibibitsPerSecond(QuantityValue gibibitspersecond)
-        {
-            double value = (double) gibibitspersecond;
-            return new BitRate((Convert.ToDecimal((value) * (1024d * 1024 * 1024))));
-        }
+        public static BitRate FromGibibitsPerSecond(QuantityValueDecimal gibibitspersecond)
 #endif
+        {
+            decimal value = (decimal) gibibitspersecond;
+            return new BitRate(value, BitRateUnit.GibibitPerSecond);
+        }
 
         /// <summary>
         ///     Get BitRate from GibibytesPerSecond.
@@ -478,17 +359,13 @@ namespace UnitsNet
 #if WINDOWS_UWP
         [Windows.Foundation.Metadata.DefaultOverload]
         public static BitRate FromGibibytesPerSecond(double gibibytespersecond)
-        {
-            double value = (double) gibibytespersecond;
-            return new BitRate(Convert.ToDecimal((value*8d) * (1024d * 1024 * 1024)));
-        }
 #else
-        public static BitRate FromGibibytesPerSecond(QuantityValue gibibytespersecond)
-        {
-            double value = (double) gibibytespersecond;
-            return new BitRate((Convert.ToDecimal((value*8d) * (1024d * 1024 * 1024))));
-        }
+        public static BitRate FromGibibytesPerSecond(QuantityValueDecimal gibibytespersecond)
 #endif
+        {
+            decimal value = (decimal) gibibytespersecond;
+            return new BitRate(value, BitRateUnit.GibibytePerSecond);
+        }
 
         /// <summary>
         ///     Get BitRate from GigabitsPerSecond.
@@ -496,17 +373,13 @@ namespace UnitsNet
 #if WINDOWS_UWP
         [Windows.Foundation.Metadata.DefaultOverload]
         public static BitRate FromGigabitsPerSecond(double gigabitspersecond)
-        {
-            double value = (double) gigabitspersecond;
-            return new BitRate(Convert.ToDecimal((value) * 1e9d));
-        }
 #else
-        public static BitRate FromGigabitsPerSecond(QuantityValue gigabitspersecond)
-        {
-            double value = (double) gigabitspersecond;
-            return new BitRate((Convert.ToDecimal((value) * 1e9d)));
-        }
+        public static BitRate FromGigabitsPerSecond(QuantityValueDecimal gigabitspersecond)
 #endif
+        {
+            decimal value = (decimal) gigabitspersecond;
+            return new BitRate(value, BitRateUnit.GigabitPerSecond);
+        }
 
         /// <summary>
         ///     Get BitRate from GigabytesPerSecond.
@@ -514,17 +387,13 @@ namespace UnitsNet
 #if WINDOWS_UWP
         [Windows.Foundation.Metadata.DefaultOverload]
         public static BitRate FromGigabytesPerSecond(double gigabytespersecond)
-        {
-            double value = (double) gigabytespersecond;
-            return new BitRate(Convert.ToDecimal((value*8d) * 1e9d));
-        }
 #else
-        public static BitRate FromGigabytesPerSecond(QuantityValue gigabytespersecond)
-        {
-            double value = (double) gigabytespersecond;
-            return new BitRate((Convert.ToDecimal((value*8d) * 1e9d)));
-        }
+        public static BitRate FromGigabytesPerSecond(QuantityValueDecimal gigabytespersecond)
 #endif
+        {
+            decimal value = (decimal) gigabytespersecond;
+            return new BitRate(value, BitRateUnit.GigabytePerSecond);
+        }
 
         /// <summary>
         ///     Get BitRate from KibibitsPerSecond.
@@ -532,17 +401,13 @@ namespace UnitsNet
 #if WINDOWS_UWP
         [Windows.Foundation.Metadata.DefaultOverload]
         public static BitRate FromKibibitsPerSecond(double kibibitspersecond)
-        {
-            double value = (double) kibibitspersecond;
-            return new BitRate(Convert.ToDecimal((value) * 1024d));
-        }
 #else
-        public static BitRate FromKibibitsPerSecond(QuantityValue kibibitspersecond)
-        {
-            double value = (double) kibibitspersecond;
-            return new BitRate((Convert.ToDecimal((value) * 1024d)));
-        }
+        public static BitRate FromKibibitsPerSecond(QuantityValueDecimal kibibitspersecond)
 #endif
+        {
+            decimal value = (decimal) kibibitspersecond;
+            return new BitRate(value, BitRateUnit.KibibitPerSecond);
+        }
 
         /// <summary>
         ///     Get BitRate from KibibytesPerSecond.
@@ -550,17 +415,13 @@ namespace UnitsNet
 #if WINDOWS_UWP
         [Windows.Foundation.Metadata.DefaultOverload]
         public static BitRate FromKibibytesPerSecond(double kibibytespersecond)
-        {
-            double value = (double) kibibytespersecond;
-            return new BitRate(Convert.ToDecimal((value*8d) * 1024d));
-        }
 #else
-        public static BitRate FromKibibytesPerSecond(QuantityValue kibibytespersecond)
-        {
-            double value = (double) kibibytespersecond;
-            return new BitRate((Convert.ToDecimal((value*8d) * 1024d)));
-        }
+        public static BitRate FromKibibytesPerSecond(QuantityValueDecimal kibibytespersecond)
 #endif
+        {
+            decimal value = (decimal) kibibytespersecond;
+            return new BitRate(value, BitRateUnit.KibibytePerSecond);
+        }
 
         /// <summary>
         ///     Get BitRate from KilobitsPerSecond.
@@ -568,17 +429,13 @@ namespace UnitsNet
 #if WINDOWS_UWP
         [Windows.Foundation.Metadata.DefaultOverload]
         public static BitRate FromKilobitsPerSecond(double kilobitspersecond)
-        {
-            double value = (double) kilobitspersecond;
-            return new BitRate(Convert.ToDecimal((value) * 1e3d));
-        }
 #else
-        public static BitRate FromKilobitsPerSecond(QuantityValue kilobitspersecond)
-        {
-            double value = (double) kilobitspersecond;
-            return new BitRate((Convert.ToDecimal((value) * 1e3d)));
-        }
+        public static BitRate FromKilobitsPerSecond(QuantityValueDecimal kilobitspersecond)
 #endif
+        {
+            decimal value = (decimal) kilobitspersecond;
+            return new BitRate(value, BitRateUnit.KilobitPerSecond);
+        }
 
         /// <summary>
         ///     Get BitRate from KilobytesPerSecond.
@@ -586,17 +443,13 @@ namespace UnitsNet
 #if WINDOWS_UWP
         [Windows.Foundation.Metadata.DefaultOverload]
         public static BitRate FromKilobytesPerSecond(double kilobytespersecond)
-        {
-            double value = (double) kilobytespersecond;
-            return new BitRate(Convert.ToDecimal((value*8d) * 1e3d));
-        }
 #else
-        public static BitRate FromKilobytesPerSecond(QuantityValue kilobytespersecond)
-        {
-            double value = (double) kilobytespersecond;
-            return new BitRate((Convert.ToDecimal((value*8d) * 1e3d)));
-        }
+        public static BitRate FromKilobytesPerSecond(QuantityValueDecimal kilobytespersecond)
 #endif
+        {
+            decimal value = (decimal) kilobytespersecond;
+            return new BitRate(value, BitRateUnit.KilobytePerSecond);
+        }
 
         /// <summary>
         ///     Get BitRate from MebibitsPerSecond.
@@ -604,17 +457,13 @@ namespace UnitsNet
 #if WINDOWS_UWP
         [Windows.Foundation.Metadata.DefaultOverload]
         public static BitRate FromMebibitsPerSecond(double mebibitspersecond)
-        {
-            double value = (double) mebibitspersecond;
-            return new BitRate(Convert.ToDecimal((value) * (1024d * 1024)));
-        }
 #else
-        public static BitRate FromMebibitsPerSecond(QuantityValue mebibitspersecond)
-        {
-            double value = (double) mebibitspersecond;
-            return new BitRate((Convert.ToDecimal((value) * (1024d * 1024))));
-        }
+        public static BitRate FromMebibitsPerSecond(QuantityValueDecimal mebibitspersecond)
 #endif
+        {
+            decimal value = (decimal) mebibitspersecond;
+            return new BitRate(value, BitRateUnit.MebibitPerSecond);
+        }
 
         /// <summary>
         ///     Get BitRate from MebibytesPerSecond.
@@ -622,17 +471,13 @@ namespace UnitsNet
 #if WINDOWS_UWP
         [Windows.Foundation.Metadata.DefaultOverload]
         public static BitRate FromMebibytesPerSecond(double mebibytespersecond)
-        {
-            double value = (double) mebibytespersecond;
-            return new BitRate(Convert.ToDecimal((value*8d) * (1024d * 1024)));
-        }
 #else
-        public static BitRate FromMebibytesPerSecond(QuantityValue mebibytespersecond)
-        {
-            double value = (double) mebibytespersecond;
-            return new BitRate((Convert.ToDecimal((value*8d) * (1024d * 1024))));
-        }
+        public static BitRate FromMebibytesPerSecond(QuantityValueDecimal mebibytespersecond)
 #endif
+        {
+            decimal value = (decimal) mebibytespersecond;
+            return new BitRate(value, BitRateUnit.MebibytePerSecond);
+        }
 
         /// <summary>
         ///     Get BitRate from MegabitsPerSecond.
@@ -640,17 +485,13 @@ namespace UnitsNet
 #if WINDOWS_UWP
         [Windows.Foundation.Metadata.DefaultOverload]
         public static BitRate FromMegabitsPerSecond(double megabitspersecond)
-        {
-            double value = (double) megabitspersecond;
-            return new BitRate(Convert.ToDecimal((value) * 1e6d));
-        }
 #else
-        public static BitRate FromMegabitsPerSecond(QuantityValue megabitspersecond)
-        {
-            double value = (double) megabitspersecond;
-            return new BitRate((Convert.ToDecimal((value) * 1e6d)));
-        }
+        public static BitRate FromMegabitsPerSecond(QuantityValueDecimal megabitspersecond)
 #endif
+        {
+            decimal value = (decimal) megabitspersecond;
+            return new BitRate(value, BitRateUnit.MegabitPerSecond);
+        }
 
         /// <summary>
         ///     Get BitRate from MegabytesPerSecond.
@@ -658,17 +499,13 @@ namespace UnitsNet
 #if WINDOWS_UWP
         [Windows.Foundation.Metadata.DefaultOverload]
         public static BitRate FromMegabytesPerSecond(double megabytespersecond)
-        {
-            double value = (double) megabytespersecond;
-            return new BitRate(Convert.ToDecimal((value*8d) * 1e6d));
-        }
 #else
-        public static BitRate FromMegabytesPerSecond(QuantityValue megabytespersecond)
-        {
-            double value = (double) megabytespersecond;
-            return new BitRate((Convert.ToDecimal((value*8d) * 1e6d)));
-        }
+        public static BitRate FromMegabytesPerSecond(QuantityValueDecimal megabytespersecond)
 #endif
+        {
+            decimal value = (decimal) megabytespersecond;
+            return new BitRate(value, BitRateUnit.MegabytePerSecond);
+        }
 
         /// <summary>
         ///     Get BitRate from PebibitsPerSecond.
@@ -676,17 +513,13 @@ namespace UnitsNet
 #if WINDOWS_UWP
         [Windows.Foundation.Metadata.DefaultOverload]
         public static BitRate FromPebibitsPerSecond(double pebibitspersecond)
-        {
-            double value = (double) pebibitspersecond;
-            return new BitRate(Convert.ToDecimal((value) * (1024d * 1024 * 1024 * 1024 * 1024)));
-        }
 #else
-        public static BitRate FromPebibitsPerSecond(QuantityValue pebibitspersecond)
-        {
-            double value = (double) pebibitspersecond;
-            return new BitRate((Convert.ToDecimal((value) * (1024d * 1024 * 1024 * 1024 * 1024))));
-        }
+        public static BitRate FromPebibitsPerSecond(QuantityValueDecimal pebibitspersecond)
 #endif
+        {
+            decimal value = (decimal) pebibitspersecond;
+            return new BitRate(value, BitRateUnit.PebibitPerSecond);
+        }
 
         /// <summary>
         ///     Get BitRate from PebibytesPerSecond.
@@ -694,17 +527,13 @@ namespace UnitsNet
 #if WINDOWS_UWP
         [Windows.Foundation.Metadata.DefaultOverload]
         public static BitRate FromPebibytesPerSecond(double pebibytespersecond)
-        {
-            double value = (double) pebibytespersecond;
-            return new BitRate(Convert.ToDecimal((value*8d) * (1024d * 1024 * 1024 * 1024 * 1024)));
-        }
 #else
-        public static BitRate FromPebibytesPerSecond(QuantityValue pebibytespersecond)
-        {
-            double value = (double) pebibytespersecond;
-            return new BitRate((Convert.ToDecimal((value*8d) * (1024d * 1024 * 1024 * 1024 * 1024))));
-        }
+        public static BitRate FromPebibytesPerSecond(QuantityValueDecimal pebibytespersecond)
 #endif
+        {
+            decimal value = (decimal) pebibytespersecond;
+            return new BitRate(value, BitRateUnit.PebibytePerSecond);
+        }
 
         /// <summary>
         ///     Get BitRate from PetabitsPerSecond.
@@ -712,17 +541,13 @@ namespace UnitsNet
 #if WINDOWS_UWP
         [Windows.Foundation.Metadata.DefaultOverload]
         public static BitRate FromPetabitsPerSecond(double petabitspersecond)
-        {
-            double value = (double) petabitspersecond;
-            return new BitRate(Convert.ToDecimal((value) * 1e15d));
-        }
 #else
-        public static BitRate FromPetabitsPerSecond(QuantityValue petabitspersecond)
-        {
-            double value = (double) petabitspersecond;
-            return new BitRate((Convert.ToDecimal((value) * 1e15d)));
-        }
+        public static BitRate FromPetabitsPerSecond(QuantityValueDecimal petabitspersecond)
 #endif
+        {
+            decimal value = (decimal) petabitspersecond;
+            return new BitRate(value, BitRateUnit.PetabitPerSecond);
+        }
 
         /// <summary>
         ///     Get BitRate from PetabytesPerSecond.
@@ -730,17 +555,13 @@ namespace UnitsNet
 #if WINDOWS_UWP
         [Windows.Foundation.Metadata.DefaultOverload]
         public static BitRate FromPetabytesPerSecond(double petabytespersecond)
-        {
-            double value = (double) petabytespersecond;
-            return new BitRate(Convert.ToDecimal((value*8d) * 1e15d));
-        }
 #else
-        public static BitRate FromPetabytesPerSecond(QuantityValue petabytespersecond)
-        {
-            double value = (double) petabytespersecond;
-            return new BitRate((Convert.ToDecimal((value*8d) * 1e15d)));
-        }
+        public static BitRate FromPetabytesPerSecond(QuantityValueDecimal petabytespersecond)
 #endif
+        {
+            decimal value = (decimal) petabytespersecond;
+            return new BitRate(value, BitRateUnit.PetabytePerSecond);
+        }
 
         /// <summary>
         ///     Get BitRate from TebibitsPerSecond.
@@ -748,17 +569,13 @@ namespace UnitsNet
 #if WINDOWS_UWP
         [Windows.Foundation.Metadata.DefaultOverload]
         public static BitRate FromTebibitsPerSecond(double tebibitspersecond)
-        {
-            double value = (double) tebibitspersecond;
-            return new BitRate(Convert.ToDecimal((value) * (1024d * 1024 * 1024 * 1024)));
-        }
 #else
-        public static BitRate FromTebibitsPerSecond(QuantityValue tebibitspersecond)
-        {
-            double value = (double) tebibitspersecond;
-            return new BitRate((Convert.ToDecimal((value) * (1024d * 1024 * 1024 * 1024))));
-        }
+        public static BitRate FromTebibitsPerSecond(QuantityValueDecimal tebibitspersecond)
 #endif
+        {
+            decimal value = (decimal) tebibitspersecond;
+            return new BitRate(value, BitRateUnit.TebibitPerSecond);
+        }
 
         /// <summary>
         ///     Get BitRate from TebibytesPerSecond.
@@ -766,17 +583,13 @@ namespace UnitsNet
 #if WINDOWS_UWP
         [Windows.Foundation.Metadata.DefaultOverload]
         public static BitRate FromTebibytesPerSecond(double tebibytespersecond)
-        {
-            double value = (double) tebibytespersecond;
-            return new BitRate(Convert.ToDecimal((value*8d) * (1024d * 1024 * 1024 * 1024)));
-        }
 #else
-        public static BitRate FromTebibytesPerSecond(QuantityValue tebibytespersecond)
-        {
-            double value = (double) tebibytespersecond;
-            return new BitRate((Convert.ToDecimal((value*8d) * (1024d * 1024 * 1024 * 1024))));
-        }
+        public static BitRate FromTebibytesPerSecond(QuantityValueDecimal tebibytespersecond)
 #endif
+        {
+            decimal value = (decimal) tebibytespersecond;
+            return new BitRate(value, BitRateUnit.TebibytePerSecond);
+        }
 
         /// <summary>
         ///     Get BitRate from TerabitsPerSecond.
@@ -784,17 +597,13 @@ namespace UnitsNet
 #if WINDOWS_UWP
         [Windows.Foundation.Metadata.DefaultOverload]
         public static BitRate FromTerabitsPerSecond(double terabitspersecond)
-        {
-            double value = (double) terabitspersecond;
-            return new BitRate(Convert.ToDecimal((value) * 1e12d));
-        }
 #else
-        public static BitRate FromTerabitsPerSecond(QuantityValue terabitspersecond)
-        {
-            double value = (double) terabitspersecond;
-            return new BitRate((Convert.ToDecimal((value) * 1e12d)));
-        }
+        public static BitRate FromTerabitsPerSecond(QuantityValueDecimal terabitspersecond)
 #endif
+        {
+            decimal value = (decimal) terabitspersecond;
+            return new BitRate(value, BitRateUnit.TerabitPerSecond);
+        }
 
         /// <summary>
         ///     Get BitRate from TerabytesPerSecond.
@@ -802,24 +611,20 @@ namespace UnitsNet
 #if WINDOWS_UWP
         [Windows.Foundation.Metadata.DefaultOverload]
         public static BitRate FromTerabytesPerSecond(double terabytespersecond)
-        {
-            double value = (double) terabytespersecond;
-            return new BitRate(Convert.ToDecimal((value*8d) * 1e12d));
-        }
 #else
-        public static BitRate FromTerabytesPerSecond(QuantityValue terabytespersecond)
-        {
-            double value = (double) terabytespersecond;
-            return new BitRate((Convert.ToDecimal((value*8d) * 1e12d)));
-        }
+        public static BitRate FromTerabytesPerSecond(QuantityValueDecimal terabytespersecond)
 #endif
+        {
+            decimal value = (decimal) terabytespersecond;
+            return new BitRate(value, BitRateUnit.TerabytePerSecond);
+        }
 
         // Windows Runtime Component does not support nullable types (double?): https://msdn.microsoft.com/en-us/library/br230301.aspx
 #if !WINDOWS_UWP
         /// <summary>
         ///     Get nullable BitRate from nullable BitsPerSecond.
         /// </summary>
-        public static BitRate? FromBitsPerSecond(QuantityValue? bitspersecond)
+        public static BitRate? FromBitsPerSecond(QuantityValueDecimal? bitspersecond)
         {
             if (bitspersecond.HasValue)
             {
@@ -834,7 +639,7 @@ namespace UnitsNet
         /// <summary>
         ///     Get nullable BitRate from nullable BytesPerSecond.
         /// </summary>
-        public static BitRate? FromBytesPerSecond(QuantityValue? bytespersecond)
+        public static BitRate? FromBytesPerSecond(QuantityValueDecimal? bytespersecond)
         {
             if (bytespersecond.HasValue)
             {
@@ -849,7 +654,7 @@ namespace UnitsNet
         /// <summary>
         ///     Get nullable BitRate from nullable ExabitsPerSecond.
         /// </summary>
-        public static BitRate? FromExabitsPerSecond(QuantityValue? exabitspersecond)
+        public static BitRate? FromExabitsPerSecond(QuantityValueDecimal? exabitspersecond)
         {
             if (exabitspersecond.HasValue)
             {
@@ -864,7 +669,7 @@ namespace UnitsNet
         /// <summary>
         ///     Get nullable BitRate from nullable ExabytesPerSecond.
         /// </summary>
-        public static BitRate? FromExabytesPerSecond(QuantityValue? exabytespersecond)
+        public static BitRate? FromExabytesPerSecond(QuantityValueDecimal? exabytespersecond)
         {
             if (exabytespersecond.HasValue)
             {
@@ -879,7 +684,7 @@ namespace UnitsNet
         /// <summary>
         ///     Get nullable BitRate from nullable ExbibitsPerSecond.
         /// </summary>
-        public static BitRate? FromExbibitsPerSecond(QuantityValue? exbibitspersecond)
+        public static BitRate? FromExbibitsPerSecond(QuantityValueDecimal? exbibitspersecond)
         {
             if (exbibitspersecond.HasValue)
             {
@@ -894,7 +699,7 @@ namespace UnitsNet
         /// <summary>
         ///     Get nullable BitRate from nullable ExbibytesPerSecond.
         /// </summary>
-        public static BitRate? FromExbibytesPerSecond(QuantityValue? exbibytespersecond)
+        public static BitRate? FromExbibytesPerSecond(QuantityValueDecimal? exbibytespersecond)
         {
             if (exbibytespersecond.HasValue)
             {
@@ -909,7 +714,7 @@ namespace UnitsNet
         /// <summary>
         ///     Get nullable BitRate from nullable GibibitsPerSecond.
         /// </summary>
-        public static BitRate? FromGibibitsPerSecond(QuantityValue? gibibitspersecond)
+        public static BitRate? FromGibibitsPerSecond(QuantityValueDecimal? gibibitspersecond)
         {
             if (gibibitspersecond.HasValue)
             {
@@ -924,7 +729,7 @@ namespace UnitsNet
         /// <summary>
         ///     Get nullable BitRate from nullable GibibytesPerSecond.
         /// </summary>
-        public static BitRate? FromGibibytesPerSecond(QuantityValue? gibibytespersecond)
+        public static BitRate? FromGibibytesPerSecond(QuantityValueDecimal? gibibytespersecond)
         {
             if (gibibytespersecond.HasValue)
             {
@@ -939,7 +744,7 @@ namespace UnitsNet
         /// <summary>
         ///     Get nullable BitRate from nullable GigabitsPerSecond.
         /// </summary>
-        public static BitRate? FromGigabitsPerSecond(QuantityValue? gigabitspersecond)
+        public static BitRate? FromGigabitsPerSecond(QuantityValueDecimal? gigabitspersecond)
         {
             if (gigabitspersecond.HasValue)
             {
@@ -954,7 +759,7 @@ namespace UnitsNet
         /// <summary>
         ///     Get nullable BitRate from nullable GigabytesPerSecond.
         /// </summary>
-        public static BitRate? FromGigabytesPerSecond(QuantityValue? gigabytespersecond)
+        public static BitRate? FromGigabytesPerSecond(QuantityValueDecimal? gigabytespersecond)
         {
             if (gigabytespersecond.HasValue)
             {
@@ -969,7 +774,7 @@ namespace UnitsNet
         /// <summary>
         ///     Get nullable BitRate from nullable KibibitsPerSecond.
         /// </summary>
-        public static BitRate? FromKibibitsPerSecond(QuantityValue? kibibitspersecond)
+        public static BitRate? FromKibibitsPerSecond(QuantityValueDecimal? kibibitspersecond)
         {
             if (kibibitspersecond.HasValue)
             {
@@ -984,7 +789,7 @@ namespace UnitsNet
         /// <summary>
         ///     Get nullable BitRate from nullable KibibytesPerSecond.
         /// </summary>
-        public static BitRate? FromKibibytesPerSecond(QuantityValue? kibibytespersecond)
+        public static BitRate? FromKibibytesPerSecond(QuantityValueDecimal? kibibytespersecond)
         {
             if (kibibytespersecond.HasValue)
             {
@@ -999,7 +804,7 @@ namespace UnitsNet
         /// <summary>
         ///     Get nullable BitRate from nullable KilobitsPerSecond.
         /// </summary>
-        public static BitRate? FromKilobitsPerSecond(QuantityValue? kilobitspersecond)
+        public static BitRate? FromKilobitsPerSecond(QuantityValueDecimal? kilobitspersecond)
         {
             if (kilobitspersecond.HasValue)
             {
@@ -1014,7 +819,7 @@ namespace UnitsNet
         /// <summary>
         ///     Get nullable BitRate from nullable KilobytesPerSecond.
         /// </summary>
-        public static BitRate? FromKilobytesPerSecond(QuantityValue? kilobytespersecond)
+        public static BitRate? FromKilobytesPerSecond(QuantityValueDecimal? kilobytespersecond)
         {
             if (kilobytespersecond.HasValue)
             {
@@ -1029,7 +834,7 @@ namespace UnitsNet
         /// <summary>
         ///     Get nullable BitRate from nullable MebibitsPerSecond.
         /// </summary>
-        public static BitRate? FromMebibitsPerSecond(QuantityValue? mebibitspersecond)
+        public static BitRate? FromMebibitsPerSecond(QuantityValueDecimal? mebibitspersecond)
         {
             if (mebibitspersecond.HasValue)
             {
@@ -1044,7 +849,7 @@ namespace UnitsNet
         /// <summary>
         ///     Get nullable BitRate from nullable MebibytesPerSecond.
         /// </summary>
-        public static BitRate? FromMebibytesPerSecond(QuantityValue? mebibytespersecond)
+        public static BitRate? FromMebibytesPerSecond(QuantityValueDecimal? mebibytespersecond)
         {
             if (mebibytespersecond.HasValue)
             {
@@ -1059,7 +864,7 @@ namespace UnitsNet
         /// <summary>
         ///     Get nullable BitRate from nullable MegabitsPerSecond.
         /// </summary>
-        public static BitRate? FromMegabitsPerSecond(QuantityValue? megabitspersecond)
+        public static BitRate? FromMegabitsPerSecond(QuantityValueDecimal? megabitspersecond)
         {
             if (megabitspersecond.HasValue)
             {
@@ -1074,7 +879,7 @@ namespace UnitsNet
         /// <summary>
         ///     Get nullable BitRate from nullable MegabytesPerSecond.
         /// </summary>
-        public static BitRate? FromMegabytesPerSecond(QuantityValue? megabytespersecond)
+        public static BitRate? FromMegabytesPerSecond(QuantityValueDecimal? megabytespersecond)
         {
             if (megabytespersecond.HasValue)
             {
@@ -1089,7 +894,7 @@ namespace UnitsNet
         /// <summary>
         ///     Get nullable BitRate from nullable PebibitsPerSecond.
         /// </summary>
-        public static BitRate? FromPebibitsPerSecond(QuantityValue? pebibitspersecond)
+        public static BitRate? FromPebibitsPerSecond(QuantityValueDecimal? pebibitspersecond)
         {
             if (pebibitspersecond.HasValue)
             {
@@ -1104,7 +909,7 @@ namespace UnitsNet
         /// <summary>
         ///     Get nullable BitRate from nullable PebibytesPerSecond.
         /// </summary>
-        public static BitRate? FromPebibytesPerSecond(QuantityValue? pebibytespersecond)
+        public static BitRate? FromPebibytesPerSecond(QuantityValueDecimal? pebibytespersecond)
         {
             if (pebibytespersecond.HasValue)
             {
@@ -1119,7 +924,7 @@ namespace UnitsNet
         /// <summary>
         ///     Get nullable BitRate from nullable PetabitsPerSecond.
         /// </summary>
-        public static BitRate? FromPetabitsPerSecond(QuantityValue? petabitspersecond)
+        public static BitRate? FromPetabitsPerSecond(QuantityValueDecimal? petabitspersecond)
         {
             if (petabitspersecond.HasValue)
             {
@@ -1134,7 +939,7 @@ namespace UnitsNet
         /// <summary>
         ///     Get nullable BitRate from nullable PetabytesPerSecond.
         /// </summary>
-        public static BitRate? FromPetabytesPerSecond(QuantityValue? petabytespersecond)
+        public static BitRate? FromPetabytesPerSecond(QuantityValueDecimal? petabytespersecond)
         {
             if (petabytespersecond.HasValue)
             {
@@ -1149,7 +954,7 @@ namespace UnitsNet
         /// <summary>
         ///     Get nullable BitRate from nullable TebibitsPerSecond.
         /// </summary>
-        public static BitRate? FromTebibitsPerSecond(QuantityValue? tebibitspersecond)
+        public static BitRate? FromTebibitsPerSecond(QuantityValueDecimal? tebibitspersecond)
         {
             if (tebibitspersecond.HasValue)
             {
@@ -1164,7 +969,7 @@ namespace UnitsNet
         /// <summary>
         ///     Get nullable BitRate from nullable TebibytesPerSecond.
         /// </summary>
-        public static BitRate? FromTebibytesPerSecond(QuantityValue? tebibytespersecond)
+        public static BitRate? FromTebibytesPerSecond(QuantityValueDecimal? tebibytespersecond)
         {
             if (tebibytespersecond.HasValue)
             {
@@ -1179,7 +984,7 @@ namespace UnitsNet
         /// <summary>
         ///     Get nullable BitRate from nullable TerabitsPerSecond.
         /// </summary>
-        public static BitRate? FromTerabitsPerSecond(QuantityValue? terabitspersecond)
+        public static BitRate? FromTerabitsPerSecond(QuantityValueDecimal? terabitspersecond)
         {
             if (terabitspersecond.HasValue)
             {
@@ -1194,7 +999,7 @@ namespace UnitsNet
         /// <summary>
         ///     Get nullable BitRate from nullable TerabytesPerSecond.
         /// </summary>
-        public static BitRate? FromTerabytesPerSecond(QuantityValue? terabytespersecond)
+        public static BitRate? FromTerabytesPerSecond(QuantityValueDecimal? terabytespersecond)
         {
             if (terabytespersecond.HasValue)
             {
@@ -1219,67 +1024,10 @@ namespace UnitsNet
         [return: System.Runtime.InteropServices.WindowsRuntime.ReturnValueName("returnValue")]
         public static BitRate From(double value, BitRateUnit fromUnit)
 #else
-        public static BitRate From(QuantityValue value, BitRateUnit fromUnit)
+        public static BitRate From(QuantityValueDecimal value, BitRateUnit fromUnit)
 #endif
         {
-            switch (fromUnit)
-            {
-                case BitRateUnit.BitPerSecond:
-                    return FromBitsPerSecond(value);
-                case BitRateUnit.BytePerSecond:
-                    return FromBytesPerSecond(value);
-                case BitRateUnit.ExabitPerSecond:
-                    return FromExabitsPerSecond(value);
-                case BitRateUnit.ExabytePerSecond:
-                    return FromExabytesPerSecond(value);
-                case BitRateUnit.ExbibitPerSecond:
-                    return FromExbibitsPerSecond(value);
-                case BitRateUnit.ExbibytePerSecond:
-                    return FromExbibytesPerSecond(value);
-                case BitRateUnit.GibibitPerSecond:
-                    return FromGibibitsPerSecond(value);
-                case BitRateUnit.GibibytePerSecond:
-                    return FromGibibytesPerSecond(value);
-                case BitRateUnit.GigabitPerSecond:
-                    return FromGigabitsPerSecond(value);
-                case BitRateUnit.GigabytePerSecond:
-                    return FromGigabytesPerSecond(value);
-                case BitRateUnit.KibibitPerSecond:
-                    return FromKibibitsPerSecond(value);
-                case BitRateUnit.KibibytePerSecond:
-                    return FromKibibytesPerSecond(value);
-                case BitRateUnit.KilobitPerSecond:
-                    return FromKilobitsPerSecond(value);
-                case BitRateUnit.KilobytePerSecond:
-                    return FromKilobytesPerSecond(value);
-                case BitRateUnit.MebibitPerSecond:
-                    return FromMebibitsPerSecond(value);
-                case BitRateUnit.MebibytePerSecond:
-                    return FromMebibytesPerSecond(value);
-                case BitRateUnit.MegabitPerSecond:
-                    return FromMegabitsPerSecond(value);
-                case BitRateUnit.MegabytePerSecond:
-                    return FromMegabytesPerSecond(value);
-                case BitRateUnit.PebibitPerSecond:
-                    return FromPebibitsPerSecond(value);
-                case BitRateUnit.PebibytePerSecond:
-                    return FromPebibytesPerSecond(value);
-                case BitRateUnit.PetabitPerSecond:
-                    return FromPetabitsPerSecond(value);
-                case BitRateUnit.PetabytePerSecond:
-                    return FromPetabytesPerSecond(value);
-                case BitRateUnit.TebibitPerSecond:
-                    return FromTebibitsPerSecond(value);
-                case BitRateUnit.TebibytePerSecond:
-                    return FromTebibytesPerSecond(value);
-                case BitRateUnit.TerabitPerSecond:
-                    return FromTerabitsPerSecond(value);
-                case BitRateUnit.TerabytePerSecond:
-                    return FromTerabytesPerSecond(value);
-
-                default:
-                    throw new NotImplementedException("fromUnit: " + fromUnit);
-            }
+            return new BitRate((decimal)value, fromUnit);
         }
 
         // Windows Runtime Component does not support nullable types (double?): https://msdn.microsoft.com/en-us/library/br230301.aspx
@@ -1290,70 +1038,14 @@ namespace UnitsNet
         /// <param name="value">Value to convert from.</param>
         /// <param name="fromUnit">Unit to convert from.</param>
         /// <returns>BitRate unit value.</returns>
-        public static BitRate? From(QuantityValue? value, BitRateUnit fromUnit)
+        public static BitRate? From(QuantityValueDecimal? value, BitRateUnit fromUnit)
         {
             if (!value.HasValue)
             {
                 return null;
             }
-            switch (fromUnit)
-            {
-                case BitRateUnit.BitPerSecond:
-                    return FromBitsPerSecond(value.Value);
-                case BitRateUnit.BytePerSecond:
-                    return FromBytesPerSecond(value.Value);
-                case BitRateUnit.ExabitPerSecond:
-                    return FromExabitsPerSecond(value.Value);
-                case BitRateUnit.ExabytePerSecond:
-                    return FromExabytesPerSecond(value.Value);
-                case BitRateUnit.ExbibitPerSecond:
-                    return FromExbibitsPerSecond(value.Value);
-                case BitRateUnit.ExbibytePerSecond:
-                    return FromExbibytesPerSecond(value.Value);
-                case BitRateUnit.GibibitPerSecond:
-                    return FromGibibitsPerSecond(value.Value);
-                case BitRateUnit.GibibytePerSecond:
-                    return FromGibibytesPerSecond(value.Value);
-                case BitRateUnit.GigabitPerSecond:
-                    return FromGigabitsPerSecond(value.Value);
-                case BitRateUnit.GigabytePerSecond:
-                    return FromGigabytesPerSecond(value.Value);
-                case BitRateUnit.KibibitPerSecond:
-                    return FromKibibitsPerSecond(value.Value);
-                case BitRateUnit.KibibytePerSecond:
-                    return FromKibibytesPerSecond(value.Value);
-                case BitRateUnit.KilobitPerSecond:
-                    return FromKilobitsPerSecond(value.Value);
-                case BitRateUnit.KilobytePerSecond:
-                    return FromKilobytesPerSecond(value.Value);
-                case BitRateUnit.MebibitPerSecond:
-                    return FromMebibitsPerSecond(value.Value);
-                case BitRateUnit.MebibytePerSecond:
-                    return FromMebibytesPerSecond(value.Value);
-                case BitRateUnit.MegabitPerSecond:
-                    return FromMegabitsPerSecond(value.Value);
-                case BitRateUnit.MegabytePerSecond:
-                    return FromMegabytesPerSecond(value.Value);
-                case BitRateUnit.PebibitPerSecond:
-                    return FromPebibitsPerSecond(value.Value);
-                case BitRateUnit.PebibytePerSecond:
-                    return FromPebibytesPerSecond(value.Value);
-                case BitRateUnit.PetabitPerSecond:
-                    return FromPetabitsPerSecond(value.Value);
-                case BitRateUnit.PetabytePerSecond:
-                    return FromPetabytesPerSecond(value.Value);
-                case BitRateUnit.TebibitPerSecond:
-                    return FromTebibitsPerSecond(value.Value);
-                case BitRateUnit.TebibytePerSecond:
-                    return FromTebibytesPerSecond(value.Value);
-                case BitRateUnit.TerabitPerSecond:
-                    return FromTerabitsPerSecond(value.Value);
-                case BitRateUnit.TerabytePerSecond:
-                    return FromTerabytesPerSecond(value.Value);
 
-                default:
-                    throw new NotImplementedException("fromUnit: " + fromUnit);
-            }
+            return new BitRate((decimal)value.Value, fromUnit);
         }
 #endif
 
@@ -1372,12 +1064,29 @@ namespace UnitsNet
         ///     Get unit abbreviation string.
         /// </summary>
         /// <param name="unit">Unit to get abbreviation for.</param>
-        /// <param name="culture">Culture to use for localization. Defaults to Thread.CurrentUICulture.</param>
+#if WINDOWS_UWP
+        /// <param name="cultureName">Name of culture (ex: "en-US") to use for localization. Defaults to <see cref="UnitSystem" />'s default culture.</param>
+#else
+        /// <param name="provider">Format to use for localization. Defaults to <see cref="UnitSystem.DefaultCulture" />.</param>
+#endif
         /// <returns>Unit abbreviation string.</returns>
         [UsedImplicitly]
-        public static string GetAbbreviation(BitRateUnit unit, [CanBeNull] Culture culture)
+        public static string GetAbbreviation(
+          BitRateUnit unit,
+#if WINDOWS_UWP
+          [CanBeNull] string cultureName)
+#else
+          [CanBeNull] IFormatProvider provider)
+#endif
         {
-            return UnitSystem.GetCached(culture).GetDefaultAbbreviation(unit);
+#if WINDOWS_UWP
+            // Windows Runtime Component does not support CultureInfo and IFormatProvider types, so we use culture name for public methods: https://msdn.microsoft.com/en-us/library/br230301.aspx
+            IFormatProvider provider = cultureName == null ? UnitSystem.DefaultCulture : new CultureInfo(cultureName);
+#else
+            provider = provider ?? UnitSystem.DefaultCulture;
+#endif
+
+            return UnitSystem.GetCached(provider).GetDefaultAbbreviation(unit);
         }
 
         #endregion
@@ -1388,37 +1097,37 @@ namespace UnitsNet
 #if !WINDOWS_UWP
         public static BitRate operator -(BitRate right)
         {
-            return new BitRate(-right._bitsPerSecond);
+            return new BitRate(-right.Value, right.Unit);
         }
 
         public static BitRate operator +(BitRate left, BitRate right)
         {
-            return new BitRate(left._bitsPerSecond + right._bitsPerSecond);
+            return new BitRate(left.Value + right.AsBaseNumericType(left.Unit), left.Unit);
         }
 
         public static BitRate operator -(BitRate left, BitRate right)
         {
-            return new BitRate(left._bitsPerSecond - right._bitsPerSecond);
+            return new BitRate(left.Value - right.AsBaseNumericType(left.Unit), left.Unit);
         }
 
         public static BitRate operator *(decimal left, BitRate right)
         {
-            return new BitRate(left*right._bitsPerSecond);
+            return new BitRate(left * right.Value, right.Unit);
         }
 
-        public static BitRate operator *(BitRate left, double right)
+        public static BitRate operator *(BitRate left, decimal right)
         {
-            return new BitRate(left._bitsPerSecond*(decimal)right);
+            return new BitRate(left.Value * right, left.Unit);
         }
 
-        public static BitRate operator /(BitRate left, double right)
+        public static BitRate operator /(BitRate left, decimal right)
         {
-            return new BitRate(left._bitsPerSecond/(decimal)right);
+            return new BitRate(left.Value / right, left.Unit);
         }
 
         public static double operator /(BitRate left, BitRate right)
         {
-            return Convert.ToDouble(left._bitsPerSecond/right._bitsPerSecond);
+            return left.BitsPerSecond / right.BitsPerSecond;
         }
 #endif
 
@@ -1441,41 +1150,41 @@ namespace UnitsNet
 #endif
         int CompareTo(BitRate other)
         {
-            return _bitsPerSecond.CompareTo(other._bitsPerSecond);
+            return AsBaseUnitBitsPerSecond().CompareTo(other.AsBaseUnitBitsPerSecond());
         }
 
         // Windows Runtime Component does not allow operator overloads: https://msdn.microsoft.com/en-us/library/br230301.aspx
 #if !WINDOWS_UWP
         public static bool operator <=(BitRate left, BitRate right)
         {
-            return left._bitsPerSecond <= right._bitsPerSecond;
+            return left.Value <= right.AsBaseNumericType(left.Unit);
         }
 
         public static bool operator >=(BitRate left, BitRate right)
         {
-            return left._bitsPerSecond >= right._bitsPerSecond;
+            return left.Value >= right.AsBaseNumericType(left.Unit);
         }
 
         public static bool operator <(BitRate left, BitRate right)
         {
-            return left._bitsPerSecond < right._bitsPerSecond;
+            return left.Value < right.AsBaseNumericType(left.Unit);
         }
 
         public static bool operator >(BitRate left, BitRate right)
         {
-            return left._bitsPerSecond > right._bitsPerSecond;
+            return left.Value > right.AsBaseNumericType(left.Unit);
         }
 
         public static bool operator ==(BitRate left, BitRate right)
         {
             // ReSharper disable once CompareOfFloatsByEqualityOperator
-            return left._bitsPerSecond == right._bitsPerSecond;
+            return left.Value == right.AsBaseNumericType(left.Unit);
         }
 
         public static bool operator !=(BitRate left, BitRate right)
         {
             // ReSharper disable once CompareOfFloatsByEqualityOperator
-            return left._bitsPerSecond != right._bitsPerSecond;
+            return left.Value != right.AsBaseNumericType(left.Unit);
         }
 #endif
 
@@ -1486,7 +1195,7 @@ namespace UnitsNet
                 return false;
             }
 
-            return _bitsPerSecond.Equals(((BitRate) obj)._bitsPerSecond);
+            return AsBaseUnitBitsPerSecond().Equals(((BitRate) obj).AsBaseUnitBitsPerSecond());
         }
 
         /// <summary>
@@ -1499,12 +1208,12 @@ namespace UnitsNet
         /// <returns>True if the difference between the two values is not greater than the specified max.</returns>
         public bool Equals(BitRate other, BitRate maxError)
         {
-            return Math.Abs(_bitsPerSecond - other._bitsPerSecond) <= maxError._bitsPerSecond;
+            return Math.Abs(AsBaseUnitBitsPerSecond() - other.AsBaseUnitBitsPerSecond()) <= maxError.AsBaseUnitBitsPerSecond();
         }
 
         public override int GetHashCode()
         {
-            return _bitsPerSecond.GetHashCode();
+			return new { Value, Unit }.GetHashCode();
         }
 
         #endregion
@@ -1514,64 +1223,44 @@ namespace UnitsNet
         /// <summary>
         ///     Convert to the unit representation <paramref name="unit" />.
         /// </summary>
-        /// <returns>Value in new unit if successful, exception otherwise.</returns>
-        /// <exception cref="NotImplementedException">If conversion was not successful.</exception>
+        /// <returns>Value converted to the specified unit.</returns>
         public double As(BitRateUnit unit)
         {
+            if (Unit == unit)
+            {
+                return (double)Value;
+            }
+
+            decimal baseUnitValue = AsBaseUnitBitsPerSecond();
+
             switch (unit)
             {
-                case BitRateUnit.BitPerSecond:
-                    return BitsPerSecond;
-                case BitRateUnit.BytePerSecond:
-                    return BytesPerSecond;
-                case BitRateUnit.ExabitPerSecond:
-                    return ExabitsPerSecond;
-                case BitRateUnit.ExabytePerSecond:
-                    return ExabytesPerSecond;
-                case BitRateUnit.ExbibitPerSecond:
-                    return ExbibitsPerSecond;
-                case BitRateUnit.ExbibytePerSecond:
-                    return ExbibytesPerSecond;
-                case BitRateUnit.GibibitPerSecond:
-                    return GibibitsPerSecond;
-                case BitRateUnit.GibibytePerSecond:
-                    return GibibytesPerSecond;
-                case BitRateUnit.GigabitPerSecond:
-                    return GigabitsPerSecond;
-                case BitRateUnit.GigabytePerSecond:
-                    return GigabytesPerSecond;
-                case BitRateUnit.KibibitPerSecond:
-                    return KibibitsPerSecond;
-                case BitRateUnit.KibibytePerSecond:
-                    return KibibytesPerSecond;
-                case BitRateUnit.KilobitPerSecond:
-                    return KilobitsPerSecond;
-                case BitRateUnit.KilobytePerSecond:
-                    return KilobytesPerSecond;
-                case BitRateUnit.MebibitPerSecond:
-                    return MebibitsPerSecond;
-                case BitRateUnit.MebibytePerSecond:
-                    return MebibytesPerSecond;
-                case BitRateUnit.MegabitPerSecond:
-                    return MegabitsPerSecond;
-                case BitRateUnit.MegabytePerSecond:
-                    return MegabytesPerSecond;
-                case BitRateUnit.PebibitPerSecond:
-                    return PebibitsPerSecond;
-                case BitRateUnit.PebibytePerSecond:
-                    return PebibytesPerSecond;
-                case BitRateUnit.PetabitPerSecond:
-                    return PetabitsPerSecond;
-                case BitRateUnit.PetabytePerSecond:
-                    return PetabytesPerSecond;
-                case BitRateUnit.TebibitPerSecond:
-                    return TebibitsPerSecond;
-                case BitRateUnit.TebibytePerSecond:
-                    return TebibytesPerSecond;
-                case BitRateUnit.TerabitPerSecond:
-                    return TerabitsPerSecond;
-                case BitRateUnit.TerabytePerSecond:
-                    return TerabytesPerSecond;
+                case BitRateUnit.BitPerSecond: return Convert.ToDouble(baseUnitValue);
+                case BitRateUnit.BytePerSecond: return Convert.ToDouble(baseUnitValue/8m);
+                case BitRateUnit.ExabitPerSecond: return Convert.ToDouble((baseUnitValue) / 1e18m);
+                case BitRateUnit.ExabytePerSecond: return Convert.ToDouble((baseUnitValue/8m) / 1e18m);
+                case BitRateUnit.ExbibitPerSecond: return Convert.ToDouble((baseUnitValue) / (1024m * 1024 * 1024 * 1024 * 1024 * 1024));
+                case BitRateUnit.ExbibytePerSecond: return Convert.ToDouble((baseUnitValue/8m) / (1024m * 1024 * 1024 * 1024 * 1024 * 1024));
+                case BitRateUnit.GibibitPerSecond: return Convert.ToDouble((baseUnitValue) / (1024m * 1024 * 1024));
+                case BitRateUnit.GibibytePerSecond: return Convert.ToDouble((baseUnitValue/8m) / (1024m * 1024 * 1024));
+                case BitRateUnit.GigabitPerSecond: return Convert.ToDouble((baseUnitValue) / 1e9m);
+                case BitRateUnit.GigabytePerSecond: return Convert.ToDouble((baseUnitValue/8m) / 1e9m);
+                case BitRateUnit.KibibitPerSecond: return Convert.ToDouble((baseUnitValue) / 1024m);
+                case BitRateUnit.KibibytePerSecond: return Convert.ToDouble((baseUnitValue/8m) / 1024m);
+                case BitRateUnit.KilobitPerSecond: return Convert.ToDouble((baseUnitValue) / 1e3m);
+                case BitRateUnit.KilobytePerSecond: return Convert.ToDouble((baseUnitValue/8m) / 1e3m);
+                case BitRateUnit.MebibitPerSecond: return Convert.ToDouble((baseUnitValue) / (1024m * 1024));
+                case BitRateUnit.MebibytePerSecond: return Convert.ToDouble((baseUnitValue/8m) / (1024m * 1024));
+                case BitRateUnit.MegabitPerSecond: return Convert.ToDouble((baseUnitValue) / 1e6m);
+                case BitRateUnit.MegabytePerSecond: return Convert.ToDouble((baseUnitValue/8m) / 1e6m);
+                case BitRateUnit.PebibitPerSecond: return Convert.ToDouble((baseUnitValue) / (1024m * 1024 * 1024 * 1024 * 1024));
+                case BitRateUnit.PebibytePerSecond: return Convert.ToDouble((baseUnitValue/8m) / (1024m * 1024 * 1024 * 1024 * 1024));
+                case BitRateUnit.PetabitPerSecond: return Convert.ToDouble((baseUnitValue) / 1e15m);
+                case BitRateUnit.PetabytePerSecond: return Convert.ToDouble((baseUnitValue/8m) / 1e15m);
+                case BitRateUnit.TebibitPerSecond: return Convert.ToDouble((baseUnitValue) / (1024m * 1024 * 1024 * 1024));
+                case BitRateUnit.TebibytePerSecond: return Convert.ToDouble((baseUnitValue/8m) / (1024m * 1024 * 1024 * 1024));
+                case BitRateUnit.TerabitPerSecond: return Convert.ToDouble((baseUnitValue) / 1e12m);
+                case BitRateUnit.TerabytePerSecond: return Convert.ToDouble((baseUnitValue/8m) / 1e12m);
 
                 default:
                     throw new NotImplementedException("unit: " + unit);
@@ -1613,7 +1302,11 @@ namespace UnitsNet
         ///     Parse a string with one or two quantities of the format "&lt;quantity&gt; &lt;unit&gt;".
         /// </summary>
         /// <param name="str">String to parse. Typically in the form: {number} {unit}</param>
-        /// <param name="culture">Format to use when parsing number and unit. If it is null, it defaults to <see cref="NumberFormatInfo.CurrentInfo"/> for parsing the number and <see cref="CultureInfo.CurrentUICulture"/> for parsing the unit abbreviation by culture/language.</param>
+#if WINDOWS_UWP
+        /// <param name="cultureName">Name of culture (ex: "en-US") to use when parsing number and unit. Defaults to <see cref="UnitSystem" />'s default culture.</param>
+#else
+        /// <param name="provider">Format to use when parsing number and unit. Defaults to <see cref="UnitSystem.DefaultCulture" />.</param>
+#endif
         /// <example>
         ///     Length.Parse("5.5 m", new CultureInfo("en-US"));
         /// </example>
@@ -1632,17 +1325,24 @@ namespace UnitsNet
         ///     We wrap exceptions in <see cref="UnitsNetException" /> to allow you to distinguish
         ///     Units.NET exceptions from other exceptions.
         /// </exception>
-        public static BitRate Parse(string str, [CanBeNull] Culture culture)
+        public static BitRate Parse(
+            string str,
+#if WINDOWS_UWP
+            [CanBeNull] string cultureName)
+#else
+            [CanBeNull] IFormatProvider provider)
+#endif
         {
             if (str == null) throw new ArgumentNullException("str");
 
-        // Windows Runtime Component does not support CultureInfo type, so use culture name string for public methods instead: https://msdn.microsoft.com/en-us/library/br230301.aspx
 #if WINDOWS_UWP
-            IFormatProvider formatProvider = culture == null ? null : new CultureInfo(culture);
+            // Windows Runtime Component does not support CultureInfo and IFormatProvider types, so we use culture name for public methods: https://msdn.microsoft.com/en-us/library/br230301.aspx
+            IFormatProvider provider = cultureName == null ? UnitSystem.DefaultCulture : new CultureInfo(cultureName);
 #else
-            IFormatProvider formatProvider = culture;
+            provider = provider ?? UnitSystem.DefaultCulture;
 #endif
-            return QuantityParser.Parse<BitRate, BitRateUnit>(str, formatProvider,
+
+            return QuantityParser.Parse<BitRate, BitRateUnit>(str, provider,
                 delegate(string value, string unit, IFormatProvider formatProvider2)
                 {
                     double parsedValue = double.Parse(value, formatProvider2);
@@ -1668,16 +1368,41 @@ namespace UnitsNet
         ///     Try to parse a string with one or two quantities of the format "&lt;quantity&gt; &lt;unit&gt;".
         /// </summary>
         /// <param name="str">String to parse. Typically in the form: {number} {unit}</param>
-        /// <param name="culture">Format to use when parsing number and unit. If it is null, it defaults to <see cref="NumberFormatInfo.CurrentInfo"/> for parsing the number and <see cref="CultureInfo.CurrentUICulture"/> for parsing the unit abbreviation by culture/language.</param>
+#if WINDOWS_UWP
+        /// <param name="cultureName">Name of culture (ex: "en-US") to use when parsing number and unit. Defaults to <see cref="UnitSystem" />'s default culture.</param>
+#else
+        /// <param name="provider">Format to use when parsing number and unit. Defaults to <see cref="UnitSystem.DefaultCulture" />.</param>
+#endif
         /// <param name="result">Resulting unit quantity if successful.</param>
         /// <example>
         ///     Length.Parse("5.5 m", new CultureInfo("en-US"));
         /// </example>
-        public static bool TryParse([CanBeNull] string str, [CanBeNull] Culture culture, out BitRate result)
+        public static bool TryParse(
+            [CanBeNull] string str,
+#if WINDOWS_UWP
+            [CanBeNull] string cultureName,
+#else
+            [CanBeNull] IFormatProvider provider,
+#endif
+          out BitRate result)
         {
+#if WINDOWS_UWP
+            // Windows Runtime Component does not support CultureInfo and IFormatProvider types, so we use culture name for public methods: https://msdn.microsoft.com/en-us/library/br230301.aspx
+            IFormatProvider provider = cultureName == null ? UnitSystem.DefaultCulture : new CultureInfo(cultureName);
+#else
+            provider = provider ?? UnitSystem.DefaultCulture;
+#endif
             try
             {
-                result = Parse(str, culture);
+
+                result = Parse(
+                  str,
+#if WINDOWS_UWP
+                  cultureName);
+#else
+                  provider);
+#endif
+
                 return true;
             }
             catch
@@ -1690,6 +1415,7 @@ namespace UnitsNet
         /// <summary>
         ///     Parse a unit string.
         /// </summary>
+        /// <param name="str">String to parse. Typically in the form: {number} {unit}</param>
         /// <example>
         ///     Length.ParseUnit("m", new CultureInfo("en-US"));
         /// </example>
@@ -1703,11 +1429,14 @@ namespace UnitsNet
         /// <summary>
         ///     Parse a unit string.
         /// </summary>
+        /// <param name="str">String to parse. Typically in the form: {number} {unit}</param>
+        /// <param name="cultureName">Name of culture (ex: "en-US") to use when parsing number and unit. Defaults to <see cref="UnitSystem" />'s default culture.</param>
         /// <example>
         ///     Length.ParseUnit("m", new CultureInfo("en-US"));
         /// </example>
         /// <exception cref="ArgumentNullException">The value of 'str' cannot be null. </exception>
         /// <exception cref="UnitsNetException">Error parsing string.</exception>
+        [Obsolete("Use overload that takes IFormatProvider instead of culture name. This method was only added to support WindowsRuntimeComponent and will be removed from other .NET targets.")]
         public static BitRateUnit ParseUnit(string str, [CanBeNull] string cultureName)
         {
             return ParseUnit(str, cultureName == null ? null : new CultureInfo(cultureName));
@@ -1716,6 +1445,8 @@ namespace UnitsNet
         /// <summary>
         ///     Parse a unit string.
         /// </summary>
+        /// <param name="str">String to parse. Typically in the form: {number} {unit}</param>
+        /// <param name="provider">Format to use when parsing number and unit. Defaults to <see cref="UnitSystem.DefaultCulture" />.</param>
         /// <example>
         ///     Length.ParseUnit("m", new CultureInfo("en-US"));
         /// </example>
@@ -1728,18 +1459,18 @@ namespace UnitsNet
 #else
         public
 #endif
-        static BitRateUnit ParseUnit(string str, IFormatProvider formatProvider = null)
+        static BitRateUnit ParseUnit(string str, IFormatProvider provider = null)
         {
             if (str == null) throw new ArgumentNullException("str");
 
-            var unitSystem = UnitSystem.GetCached(formatProvider);
+            var unitSystem = UnitSystem.GetCached(provider);
             var unit = unitSystem.Parse<BitRateUnit>(str.Trim());
 
             if (unit == BitRateUnit.Undefined)
             {
                 var newEx = new UnitsNetException("Error parsing string. The unit is not a recognized BitRateUnit.");
                 newEx.Data["input"] = str;
-                newEx.Data["formatprovider"] = formatProvider?.ToString() ?? "(null)";
+                newEx.Data["provider"] = provider?.ToString() ?? "(null)";
                 throw newEx;
             }
 
@@ -1748,6 +1479,7 @@ namespace UnitsNet
 
         #endregion
 
+        [Obsolete("This is no longer used since we will instead use the quantity's Unit value as default.")]
         /// <summary>
         ///     Set the default unit used by ToString(). Default is BitPerSecond
         /// </summary>
@@ -1759,7 +1491,7 @@ namespace UnitsNet
         /// <returns>String representation.</returns>
         public override string ToString()
         {
-            return ToString(ToStringDefaultUnit);
+            return ToString(Unit);
         }
 
         /// <summary>
@@ -1776,74 +1508,154 @@ namespace UnitsNet
         ///     Get string representation of value and unit. Using two significant digits after radix.
         /// </summary>
         /// <param name="unit">Unit representation to use.</param>
-        /// <param name="culture">Culture to use for localization and number formatting.</param>
+#if WINDOWS_UWP
+        /// <param name="cultureName">Name of culture (ex: "en-US") to use for localization and number formatting. Defaults to <see cref="UnitSystem" />'s default culture.</param>
+#else
+        /// <param name="provider">Format to use for localization and number formatting. Defaults to <see cref="UnitSystem.DefaultCulture" />.</param>
+#endif
         /// <returns>String representation.</returns>
-        public string ToString(BitRateUnit unit, [CanBeNull] Culture culture)
+        public string ToString(
+          BitRateUnit unit,
+#if WINDOWS_UWP
+            [CanBeNull] string cultureName)
+#else
+            [CanBeNull] IFormatProvider provider)
+#endif
         {
-            return ToString(unit, culture, 2);
+            return ToString(
+              unit,
+#if WINDOWS_UWP
+              cultureName,
+#else
+              provider,
+#endif
+              2);
         }
 
         /// <summary>
         ///     Get string representation of value and unit.
         /// </summary>
         /// <param name="unit">Unit representation to use.</param>
-        /// <param name="culture">Culture to use for localization and number formatting.</param>
+#if WINDOWS_UWP
+        /// <param name="cultureName">Name of culture (ex: "en-US") to use for localization and number formatting. Defaults to <see cref="UnitSystem" />'s default culture.</param>
+#else
+        /// <param name="provider">Format to use for localization and number formatting. Defaults to <see cref="UnitSystem.DefaultCulture" />.</param>
+#endif
         /// <param name="significantDigitsAfterRadix">The number of significant digits after the radix point.</param>
         /// <returns>String representation.</returns>
         [UsedImplicitly]
-        public string ToString(BitRateUnit unit, [CanBeNull] Culture culture, int significantDigitsAfterRadix)
+        public string ToString(
+            BitRateUnit unit,
+#if WINDOWS_UWP
+            [CanBeNull] string cultureName,
+#else
+            [CanBeNull] IFormatProvider provider,
+#endif
+            int significantDigitsAfterRadix)
         {
             double value = As(unit);
             string format = UnitFormatter.GetFormat(value, significantDigitsAfterRadix);
-            return ToString(unit, culture, format);
+            return ToString(
+              unit,
+#if WINDOWS_UWP
+              cultureName,
+#else
+              provider,
+#endif
+              format);
         }
 
         /// <summary>
         ///     Get string representation of value and unit.
         /// </summary>
-        /// <param name="culture">Culture to use for localization and number formatting.</param>
+#if WINDOWS_UWP
+        /// <param name="cultureName">Name of culture (ex: "en-US") to use for localization and number formatting. Defaults to <see cref="UnitSystem" />'s default culture.</param>
+#else
+        /// <param name="provider">Format to use for localization and number formatting. Defaults to <see cref="UnitSystem.DefaultCulture" />.</param>
+#endif
         /// <param name="unit">Unit representation to use.</param>
         /// <param name="format">String format to use. Default:  "{0:0.##} {1} for value and unit abbreviation respectively."</param>
         /// <param name="args">Arguments for string format. Value and unit are implictly included as arguments 0 and 1.</param>
         /// <returns>String representation.</returns>
         [UsedImplicitly]
-        public string ToString(BitRateUnit unit, [CanBeNull] Culture culture, [NotNull] string format,
+        public string ToString(
+            BitRateUnit unit,
+#if WINDOWS_UWP
+            [CanBeNull] string cultureName,
+#else
+            [CanBeNull] IFormatProvider provider,
+#endif
+            [NotNull] string format,
             [NotNull] params object[] args)
         {
             if (format == null) throw new ArgumentNullException(nameof(format));
             if (args == null) throw new ArgumentNullException(nameof(args));
 
-        // Windows Runtime Component does not support CultureInfo type, so use culture name string for public methods instead: https://msdn.microsoft.com/en-us/library/br230301.aspx
 #if WINDOWS_UWP
-            IFormatProvider formatProvider = culture == null ? null : new CultureInfo(culture);
+            // Windows Runtime Component does not support CultureInfo and IFormatProvider types, so we use culture name for public methods: https://msdn.microsoft.com/en-us/library/br230301.aspx
+            IFormatProvider provider = cultureName == null ? UnitSystem.DefaultCulture : new CultureInfo(cultureName);
 #else
-            IFormatProvider formatProvider = culture;
+            provider = provider ?? UnitSystem.DefaultCulture;
 #endif
+
             double value = As(unit);
-            object[] formatArgs = UnitFormatter.GetFormatArgs(unit, value, formatProvider, args);
-            return string.Format(formatProvider, format, formatArgs);
+            object[] formatArgs = UnitFormatter.GetFormatArgs(unit, value, provider, args);
+            return string.Format(provider, format, formatArgs);
         }
 
         /// <summary>
         /// Represents the largest possible value of BitRate
         /// </summary>
-        public static BitRate MaxValue
-        {
-            get
-            {
-                return new BitRate(decimal.MaxValue);
-            }
-        }
+        public static BitRate MaxValue => new BitRate(decimal.MaxValue, BaseUnit);
 
         /// <summary>
         /// Represents the smallest possible value of BitRate
         /// </summary>
-        public static BitRate MinValue
+        public static BitRate MinValue => new BitRate(decimal.MinValue, BaseUnit);
+
+        /// <summary>
+        ///     Converts the current value + unit to the base unit.
+        ///     This is typically the first step in converting from one unit to another.
+        /// </summary>
+        /// <returns>The value in the base unit representation.</returns>
+        private decimal AsBaseUnitBitsPerSecond()
         {
-            get
+			if (Unit == BitRateUnit.BitPerSecond) { return _value; }
+
+            switch (Unit)
             {
-                return new BitRate(decimal.MinValue);
-            }
-        }
-    }
+                case BitRateUnit.BitPerSecond: return Convert.ToDecimal(_value);
+                case BitRateUnit.BytePerSecond: return Convert.ToDecimal(_value*8m);
+                case BitRateUnit.ExabitPerSecond: return Convert.ToDecimal((_value) * 1e18m);
+                case BitRateUnit.ExabytePerSecond: return Convert.ToDecimal((_value*8m) * 1e18m);
+                case BitRateUnit.ExbibitPerSecond: return Convert.ToDecimal((_value) * (1024m * 1024 * 1024 * 1024 * 1024 * 1024));
+                case BitRateUnit.ExbibytePerSecond: return Convert.ToDecimal((_value*8m) * (1024m * 1024 * 1024 * 1024 * 1024 * 1024));
+                case BitRateUnit.GibibitPerSecond: return Convert.ToDecimal((_value) * (1024m * 1024 * 1024));
+                case BitRateUnit.GibibytePerSecond: return Convert.ToDecimal((_value*8m) * (1024m * 1024 * 1024));
+                case BitRateUnit.GigabitPerSecond: return Convert.ToDecimal((_value) * 1e9m);
+                case BitRateUnit.GigabytePerSecond: return Convert.ToDecimal((_value*8m) * 1e9m);
+                case BitRateUnit.KibibitPerSecond: return Convert.ToDecimal((_value) * 1024m);
+                case BitRateUnit.KibibytePerSecond: return Convert.ToDecimal((_value*8m) * 1024m);
+                case BitRateUnit.KilobitPerSecond: return Convert.ToDecimal((_value) * 1e3m);
+                case BitRateUnit.KilobytePerSecond: return Convert.ToDecimal((_value*8m) * 1e3m);
+                case BitRateUnit.MebibitPerSecond: return Convert.ToDecimal((_value) * (1024m * 1024));
+                case BitRateUnit.MebibytePerSecond: return Convert.ToDecimal((_value*8m) * (1024m * 1024));
+                case BitRateUnit.MegabitPerSecond: return Convert.ToDecimal((_value) * 1e6m);
+                case BitRateUnit.MegabytePerSecond: return Convert.ToDecimal((_value*8m) * 1e6m);
+                case BitRateUnit.PebibitPerSecond: return Convert.ToDecimal((_value) * (1024m * 1024 * 1024 * 1024 * 1024));
+                case BitRateUnit.PebibytePerSecond: return Convert.ToDecimal((_value*8m) * (1024m * 1024 * 1024 * 1024 * 1024));
+                case BitRateUnit.PetabitPerSecond: return Convert.ToDecimal((_value) * 1e15m);
+                case BitRateUnit.PetabytePerSecond: return Convert.ToDecimal((_value*8m) * 1e15m);
+                case BitRateUnit.TebibitPerSecond: return Convert.ToDecimal((_value) * (1024m * 1024 * 1024 * 1024));
+                case BitRateUnit.TebibytePerSecond: return Convert.ToDecimal((_value*8m) * (1024m * 1024 * 1024 * 1024));
+                case BitRateUnit.TerabitPerSecond: return Convert.ToDecimal((_value) * 1e12m);
+                case BitRateUnit.TerabytePerSecond: return Convert.ToDecimal((_value*8m) * 1e12m);
+                default:
+                    throw new NotImplementedException("Unit not implemented: " + Unit);
+			}
+		}
+
+		/// <summary>Convenience method for working with internal numeric type.</summary>
+        private decimal AsBaseNumericType(BitRateUnit unit) => Convert.ToDecimal(As(unit));
+	}
 }
